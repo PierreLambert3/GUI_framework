@@ -3,7 +3,7 @@ from engine.gui.element import Element
 
 class Container(Element):
     def __init__(self, position, dimension, name, parent, uid_generator, show_border=False, filled=True, color=None, background_color=None, border_size=1,\
-        listening_hover=False, listening_Lclick=False, listening_Rclick=False, listening_scroll=False):
+        listening_hover=False, listening_Lclick=False, listening_Rclick=False, listening_scroll=False, attach_to_parent=False):
         super(Container, self).__init__(position=position, dimension=dimension, name=name, parent=parent, uid=uid_generator.get(),\
             color=color, background_color=background_color,listening_hover=listening_hover, listening_Lclick=listening_Lclick, listening_Rclick=listening_Rclick, listening_scroll=listening_scroll)
         self.listen_to(["hover", "Lclick", "Rclick", "scroll"])
@@ -15,6 +15,8 @@ class Container(Element):
         self.show_border = show_border
         if show_border:
             self.add_rect([(0,0), (1,1), border_size, self.color])
+        if attach_to_parent:
+            self.parent.add_container(self)
 
     def copy(self, uid_generator, with_content):
         cpy = Container(self.pos_pct, self.dim_pct, self.name, self.parent, uid=uid_generator.get(), show_border=self.shows_border,\

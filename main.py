@@ -17,7 +17,7 @@ def make_main_screen(theme, config, uid_generator):
 
 
 def make_theme(print_mode):
-	main_theme  = {"background" : np.array([5,0,10]), "color" : np.array([0, 200,250])}
+	main_theme  = {"background" : np.array([15,0,5]), "color" : np.array([180, 80,10])}
 	if print_mode:
 		main_theme["background"]  = np.array([255,255,255])
 		main_theme["color"]  = luminosity_change(main_theme["color"], -300)
