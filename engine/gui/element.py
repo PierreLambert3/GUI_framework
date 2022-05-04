@@ -148,33 +148,37 @@ class Element:
         if self.on_scroll_listener is not None:
             self.notify_on_scroll = True
 
-    def add_listener(self, event_type, listener):
-        if event_type == "draw":
-            self.on_draw_listener = listener
-            self.notify_on_draw = True
-        elif event_type == "Lclick":
-            self.default_listening_Lclick = True
-            self.listening_Lclick         = True
-            self.on_Lclick_listener = listener
-            self.notify_on_Lclick = True
-        elif event_type == "Rclick":
-            self.default_listening_Rclick = True
-            self.listening_Rclick         = True
-            self.on_Rclick_listener = listener
-            self.notify_on_Rclick = True
-        elif event_type == "hover":
-            self.default_listening_hover = True
-            self.listening_hover         = True
-            self.on_hover_listener = listener
-            self.notify_on_hover = True
-        elif event_type == "scroll":
-            self.default_listening_scroll = True
-            self.listening_scroll         = True
-            self.on_scroll_listener = listener
-            self.notify_on_scroll = True
-        else:
-            print("\n\t UNRECOGNISED EVENT_TYPE IN ADD_LISTENER():  ", event_type)
-            1/0
+    # event_types --> something like {"Lclick":LISTENER_ID1, "hover":LISTENER_ID2}
+    #                 this allows for more precise IDs for the event and thus reduces the work on the side of the manager
+    def add_listeners(self, event_types, to_notify):
+        for event_type in event_types:
+            EVENT_ID = event_types[event_type] #  {"event name": ID_OF_THE_EVENT}
+            if event_type == "draw":
+                self.on_draw_listener = Listener(EVENT_ID, [to_notify])
+                self.notify_on_draw = True
+            elif event_type == "Lclick":
+                self.default_listening_Lclick = True
+                self.listening_Lclick         = True
+                self.on_Lclick_listener = listener
+                self.notify_on_Lclick = True
+            elif event_type == "Rclick":
+                self.default_listening_Rclick = True
+                self.listening_Rclick         = True
+                self.on_Rclick_listener = listener
+                self.notify_on_Rclick = True
+            elif event_type == "hover":
+                self.default_listening_hover = True
+                self.listening_hover         = True
+                self.on_hover_listener = listener
+                self.notify_on_hover = True
+            elif event_type == "scroll":
+                self.default_listening_scroll = True
+                self.listening_scroll         = True
+                self.on_scroll_listener = listener
+                self.notify_on_scroll = True
+            else:
+                print("\n\t UNRECOGNISED EVENT_TYPE IN ADD_LISTENER():  ", event_type)
+                1/0
 
     def listen_to(self, event_list, listener = None):
         for e in event_list:

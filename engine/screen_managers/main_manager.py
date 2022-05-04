@@ -26,6 +26,8 @@ class Main_manager(Manager):
         with self.lock:
             if event_class == "this_event" and not self.ctrl_pressed:
                 print("event")
+            else:
+                print("unrecognised event received by main_manager: ", event_class, " (id=", id,")")
 
     def on_awaited_key_press(self, to_redraw, pressed_keys, pressed_special_keys):
         if pressed_keys[0] == 'o':

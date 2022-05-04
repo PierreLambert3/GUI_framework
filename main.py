@@ -43,6 +43,15 @@ def init_screen(config):
 		return pygame.display.set_mode(config["resolution"])
 
 
+def optimise(dict):
+    X = dict['X']
+
+
 
 if __name__ == "__main__":
+
+continuer ici
+    worker_args = [{'X':np.random.uniform(size=(1000, 2))}]
+    run_gui(gui_args = "-w" if "-w" in sys.argv else "", worker_function=optimise, worker_args=worker_args)
+
     run(sys.argv[1:])

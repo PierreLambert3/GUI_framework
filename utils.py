@@ -75,7 +75,7 @@ def get_gui_config(argv):
                     value = default_N[1].split('=')[1].split('#')[0].strip()
                     config["default_N"] = int(value.strip())
     except:
-        honourable_death("error when reading config file. \nmake sure the config file is at the root folder (next to main.py) \nalso make sure that each element is written in the format : \" - windowed            = False    #  If passing arguments \"-w\" then windowed is set to True.\"")
+        die("error when reading config file. \nmake sure the config file is at the root folder (next to main.py) \nalso make sure that each element is written in the format : \" - windowed            = False    #  If passing arguments \"-w\" then windowed is set to True.\"")
 
     if '-p' in str(argv):
         config["print mode"] = True
@@ -83,7 +83,7 @@ def get_gui_config(argv):
         config["windowed"] = True
     return config
 
-def honourable_death(message):
+def die(message):
     print("\n\n    ERROR :")
     print(message)
     print()
