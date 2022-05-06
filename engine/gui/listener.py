@@ -17,7 +17,7 @@ class Gui_listener:
             self.to_notify.append(targets)
 
     # can get a new value from the notified elements
-    def notify(self, value, to_redraw):
+    def notify(self, value, to_redraw=[]):
         for e in self.to_notify:
             if self.misc_info is not None:
                 e.get_notified(self.listener_class, self.id, (value, self.misc_info), to_redraw)

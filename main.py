@@ -5,7 +5,7 @@ from engine.gui.gui import Gui, Id_generator
 from engine.gui.container import Container
 from engine.gui.window import Window
 from engine.screen_managers.main_manager import Main_manager
-import pygame
+import pygame, threading
 import numpy as np
 
 
@@ -23,15 +23,15 @@ def make_theme(print_mode):
 		main_theme["color"]  = luminosity_change(main_theme["color"], -300)
 	return {"main" : main_theme}
 
-def run(argv):
+
+def build_gui(gui_args):
 	uid_generator = Id_generator()
-	config        = get_gui_config(argv)
+	config        = get_gui_config(gui_args)
 	display       = init_screen(config)
 	running_flag  = Shared_variable(True)
 	theme		  = make_theme(config["print mode"])
 	main_screen   = make_main_screen(theme, config, uid_generator)
-	gui = Gui(display, theme, config, running_flag, main_screen)
-	gui.routine()
+	return Gui(display, theme, config, running_flag, main_screen)
 
 def init_screen(config):
 	if not config["windowed"]:
@@ -43,15 +43,32 @@ def init_screen(config):
 		return pygame.display.set_mode(config["resolution"])
 
 
-def optimise(dict):
-    X = dict['X']
+def run_both(gui_args, worker_function, worker_args):
+    gui = build_gui(gui_args)
 
+    worker_args[0]['scatterplot redraw'] = gui.main_manager.scatterplot_redraw_listener
+    worker_thread = threading.Thread(target=worker_function, args=worker_args)
+    worker_thread.start()
+
+    gui.routine()
+
+def worker_function(dict):
+    X = dict['X']
+    colours = (np.random.uniform(size=(X.shape[0], 3))*254.).astype(int)
+    momentums = np.zeros_like(X)
+    listener = dict['scatterplot redraw']
+    import time
+    for i in range(200):
+        # update the point locations
+        grads = np.random.normal(size=X.shape)
+        momentums = 0.9*momentums - grads
+        X += 0.05 * momentums
+        # notify the screen for a redraw
+        listener.notify((X, colours))
+        time.sleep(0.05)
 
 
 if __name__ == "__main__":
 
-continuer ici
     worker_args = [{'X':np.random.uniform(size=(1000, 2))}]
-    run_gui(gui_args = "-w" if "-w" in sys.argv else "", worker_function=optimise, worker_args=worker_args)
-
-    run(sys.argv[1:])
+    run_both(gui_args = "-w" if "-w" in sys.argv else "", worker_function=worker_function, worker_args=worker_args)

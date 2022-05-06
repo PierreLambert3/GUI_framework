@@ -29,7 +29,7 @@ class Gui:
         self.screen       = screen
         self.shd_running_bool = running_flag
 
-        self.main_manager, self.main_window        = main_screen["manager"], main_screen["window"]
+        self.main_manager, self.main_window  = main_screen["manager"], main_screen["window"]
 
         self.key_to_manager  = {
                                 config["main screen key"]  : (self.main_manager, self.main_window, "main"),
@@ -127,6 +127,7 @@ class Gui:
             if iter_num % 600 == 0:
                 print("iter: {iter:n}\t\t, waiting_mv: {mv:n}, waiting_rel: {rel:n}, waiting_key: {key:n}, to_redraw: {redraw:n}".format(iter=iter_num,mv=len(top_window.awaiting_mouse_move),rel=len(top_window.awaiting_mouse_release),key=len(top_window.awaiting_key_press),redraw=len(to_redraw)))
                 print("iter time:", "{:.3f}".format(iter_time, 3)+"ms", "      sleep:", str("{:.3f}".format(1000*self.frame_time))+"ms", "      work/sleep for gui thread:", str("{:.3f}".format(100*float(iter_time/(1000*self.frame_time))))+"%")
+
             # render the parts of the screen that were changed
             if to_redraw:
                 self.redraw(to_redraw)

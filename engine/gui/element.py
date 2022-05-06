@@ -1,4 +1,5 @@
 import pygame
+from engine.gui.listener import Listener
 
 class Element:
     def __init__(self, position, dimension, name, parent, uid, color=None, background_color=None, \
@@ -159,22 +160,22 @@ class Element:
             elif event_type == "Lclick":
                 self.default_listening_Lclick = True
                 self.listening_Lclick         = True
-                self.on_Lclick_listener = listener
+                self.on_Lclick_listener = Listener(EVENT_ID, [to_notify])
                 self.notify_on_Lclick = True
             elif event_type == "Rclick":
                 self.default_listening_Rclick = True
                 self.listening_Rclick         = True
-                self.on_Rclick_listener = listener
+                self.on_Rclick_listener = Listener(EVENT_ID, [to_notify])
                 self.notify_on_Rclick = True
             elif event_type == "hover":
                 self.default_listening_hover = True
                 self.listening_hover         = True
-                self.on_hover_listener = listener
+                self.on_hover_listener = Listener(EVENT_ID, [to_notify])
                 self.notify_on_hover = True
             elif event_type == "scroll":
                 self.default_listening_scroll = True
                 self.listening_scroll         = True
-                self.on_scroll_listener = listener
+                self.on_scroll_listener = Listener(EVENT_ID, [to_notify])
                 self.notify_on_scroll = True
             else:
                 print("\n\t UNRECOGNISED EVENT_TYPE IN ADD_LISTENER():  ", event_type)

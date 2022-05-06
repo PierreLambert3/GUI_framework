@@ -7,9 +7,9 @@ import numpy as np
 import threading
 from matplotlib.path import Path
 
-class Graph_and_scatterplot(Element):
+class Scatterplot(Element):
     def __init__(self, name, pos_pct, dim_pct, parent, uid_generator, color, manager):
-        super(Graph_and_scatterplot, self).__init__(pos_pct, dim_pct, name, parent, uid=uid_generator.get(), color=color)
+        super(Scatterplot, self).__init__(pos_pct, dim_pct, name, parent, uid=uid_generator.get(), color=color)
         self.listen_to(["Lclick","Rclick","hover"])
         self.uid_generator = uid_generator
         self.lock = threading.Lock()
@@ -26,13 +26,6 @@ class Graph_and_scatterplot(Element):
         self.Y_colours = None
 
         '''
-        ~~~~~~~~~~~~~~  graph part  ~~~~~~~~~~~~~~
-        '''
-        self.X_nodes    = None
-        self.X_links    = None
-        self.X_nodes_px = None
-
-        '''
         ~~~~~~~~~~~~~~  pixel stuff  ~~~~~~~~~~~~~~
         '''
         self.x_axis_length, self.y_axis_length = 1., 1.
@@ -44,36 +37,30 @@ class Graph_and_scatterplot(Element):
 
     def delete(self):
         with self.lock:
-            super(Graph_and_scatterplot, self).delete()
+            super(Scatterplot, self).delete()
 
-    def set_points(self, X_LD, Y_colors, X_nodes, X_links):
+    def set_points(self, X_LD, Y_colours):
         self.px_to_LD_coefs   = None
         self.px_to_LD_offsets = None
         if X_LD is not None:
             self.X_LD       = X_LD
+            self.X_LD_px    = np.zeros_like(self.X_LD)
         if Y_colours is not None:
             self.Y_colours  = Y_colours
-        if X_nodes is not None:
-            self.X_nodes  = X_nodes
-        if X_links is not None:
-            self.X_links  = X_links
         self.rebuild_points()
 
     def px_pos_to_LD(self, mouse_pos):
-        if self.X_LD is None or self.X_nodes is None or self.px_to_LD_coefs is None:
+        if self.X_LD is None or self.px_to_LD_coefs is None:
             return
         return np.array([mouse_pos[0]*self.px_to_LD_coefs[0] + self.px_to_LD_offsets[0], mouse_pos[1]*self.px_to_LD_coefs[1] + self.px_to_LD_offsets[1]]).reshape((1, 2))
 
     def rebuild_points(self):
-        if self.X_LD is None or self.X_nodes is None:
+        if self.X_LD is None or self.Y_colours is None:
             return
+
         ax_px_len = self.x_axis_length*self.dim[0]
-        min1 = np.min(self.X_LD, axis=0)
-        max1 = np.max(self.X_LD, axis=0)
-        min2 = np.min(self.X_nodes, axis=0)
-        max2 = np.max(self.X_nodes, axis=0)
-        ax1_min, ax1_max = min(min1[0], min2[0]), max(max1[0], max2[0])
-        ax2_min, ax2_max = min(min1[1], min2[1]), max(max1[1], max2[1])
+        ax1_min, ax2_min = np.min(self.X_LD, axis=0)
+        ax1_max, ax2_max = np.max(self.X_LD, axis=0)
 
         ax1_wingspan = ax1_max - ax1_min + 1e-6
         ax2_wingspan = ax2_max - ax2_min + 1e-6
@@ -84,12 +71,6 @@ class Graph_and_scatterplot(Element):
         for obs in self.X_LD:
             self.X_LD_px[idx][0] = ax_px_len*((obs[0]-ax1_min)/ax1_wingspan)+x_offset
             self.X_LD_px[idx][1] = y_offset-ax_px_len*((obs[1]-ax2_min)/ax2_wingspan)
-            idx += 1
-
-        idx = 0
-        for obs in self.X_nodes:
-            self.X_nodes_px[idx][0] = ax_px_len*((obs[0]-ax1_min)/ax1_wingspan)+x_offset
-            self.X_nodes_px[idx][1] = y_offset-ax_px_len*((obs[1]-ax2_min)/ax2_wingspan)
             idx += 1
 
         self.px_to_LD_offsets = (-x_offset*ax1_wingspan/ax_px_len +ax1_min, y_offset*ax2_wingspan/ax_px_len +ax2_min)
@@ -118,11 +99,10 @@ class Graph_and_scatterplot(Element):
         self.scale_to_square()
 
     def draw(self, screen):
-        if self.deleted:
+        if  self.X_LD_px is None:
             return
         pygame.draw.rect(screen, self.background_color, self.bounding_rect, 0)
-        if self.selected:
-            pygame.draw.rect(screen, self.color, pygame.Rect(self.lines[1][1], (self.x_axis_length*self.dim[0], self.y_axis_length*self.dim[1])), 3)
+        pygame.draw.line(screen, np.array([200, 200, 200]), (0, 0), (100, 100) ,100)
 
         thickness = 2
         m1 = np.array([0, 1])
@@ -130,21 +110,12 @@ class Graph_and_scatterplot(Element):
         '''
         draw the scatterplot
         '''
-        N = self.X_nodes_px.shape[0]
-        coord = self.X_nodes_px
-        for i in range(0, N):
-            pygame.draw.line(screen, self.Y_colors[i], coord[i]-m1, coord[i]+m1, thickness)
-            pygame.draw.line(screen, self.Y_colors[i], coord[i]-m2, coord[i]+m2, thickness)
-
-        '''
-        draw the graph
-        '''
-        N = self.X_LD.shape[0]
+        N = self.X_LD_px.shape[0]
         coord = self.X_LD_px
         for i in range(0, N):
-            pygame.draw.line(screen, self.color, coord[i]-m1, coord[i]+m1, thickness)
-            pygame.draw.line(screen, self.color, coord[i]-m2, coord[i]+m2, thickness)
-
+            pygame.draw.line(screen, self.Y_colours[i], coord[i]-m1, coord[i]+m1, thickness)
+            pygame.draw.line(screen, self.Y_colours[i], coord[i]-m2, coord[i]+m2, thickness)
+        print("finished drawing")
 
     def point_is_within_plot(self, pos):
         x_relative = pos[0]-self.abs_pos[0]-self.anchor[0]*self.dim[0]
@@ -185,3 +156,8 @@ class Graph_and_scatterplot(Element):
 
     def on_awaited_key_press(self, to_redraw, pressed_keys, pressed_special_keys):
         return True
+
+
+class Graph_and_scatterplot(Scatterplot):
+    def __init__(self, name, pos_pct, dim_pct, parent, uid_generator, color, manager):
+        super(Graph_and_scatterplot, self).__init__(pos_pct, dim_pct, name, parent, uid=uid_generator.get(), color=color)
