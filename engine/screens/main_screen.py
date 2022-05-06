@@ -14,7 +14,7 @@ class Main_screen():
         self.color = theme["color"]; self.background_color = theme["background"]
         self.eight_colors = random_colors(8)
         self.main_view   = Container((0,0), (1., 1.), "main_area", window, manager.uid_generator, color=theme["color"], background_color=theme["background"], filled=True)
-        self.main_view.add_leaf(Scatterplot("the scatterplot", pos_pct=(1., 1.), dim_pct=(1.,1.), parent=self.main_view, uid_generator=manager.uid_generator, color=self.color, manager=manager))
+        self.main_view.add_leaf(Scatterplot("the scatterplot", pos_pct=(0., 0.), dim_pct=(1.,1.), parent=self.main_view, uid_generator=manager.uid_generator, color=self.color, manager=manager))
         window.add_container(self.main_view)
         print("REEEEEEEEEE_nREEE\nERRE_n\n")
 

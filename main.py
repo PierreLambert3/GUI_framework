@@ -58,7 +58,7 @@ def worker_function(dict):
     momentums = np.zeros_like(X)
     listener = dict['scatterplot redraw']
     import time
-    for i in range(200):
+    for i in range(80):
         # update the point locations
         grads = np.random.normal(size=X.shape)
         momentums = 0.9*momentums - grads

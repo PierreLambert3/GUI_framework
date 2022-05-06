@@ -37,7 +37,7 @@ class Main_manager(Manager):
             if event_class == OPTIMISATION_UPDATE:
                 self.optim_update(value)
             else:
-                print("unrecognised event received by main_manager: ", event_class, " (id=", id,")")
+                print("unrecognised event received by main_manager: ", event_class, "  (see correspondance in event_ids.py)")
 
     def on_awaited_key_press(self, to_redraw, pressed_keys, pressed_special_keys):
         if pressed_keys[0] == 'o':

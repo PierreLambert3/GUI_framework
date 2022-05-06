@@ -144,7 +144,7 @@ class Scatterplot(Element):
 
     def propagate_hover(self, to_redraw, mouse_pos, pressed_special_keys, awaiting_mouse_move):
         if self.point_is_within_plot(mouse_pos):
-            self.on_hover_listener.notify((mouse_pos, windows), to_redraw)
+            self.on_hover_listener.notify((mouse_pos), to_redraw)
             return True
         return True
 
