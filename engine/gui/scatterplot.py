@@ -102,7 +102,6 @@ class Scatterplot(Element):
         if  self.X_LD_px is None:
             return
         pygame.draw.rect(screen, self.background_color, self.bounding_rect, 0)
-        pygame.draw.line(screen, np.array([200, 200, 200]), (0, 0), (100, 100) ,100)
 
         thickness = 2
         m1 = np.array([0, 1])
@@ -115,7 +114,7 @@ class Scatterplot(Element):
         for i in range(0, N):
             pygame.draw.line(screen, self.Y_colours[i], coord[i]-m1, coord[i]+m1, thickness)
             pygame.draw.line(screen, self.Y_colours[i], coord[i]-m2, coord[i]+m2, thickness)
-        print("finished drawing")
+        
 
     def point_is_within_plot(self, pos):
         x_relative = pos[0]-self.abs_pos[0]-self.anchor[0]*self.dim[0]
