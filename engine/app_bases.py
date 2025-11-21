@@ -112,6 +112,11 @@ class Base_Front_End:
         self.to_backend   = self.ctx.Queue()
         self.listeners    = {"worker initialised": Listener(self._launch_front_end_loop)}
 
+        # give the listeners to the back-end process
+        # self.to_backend.put(("frontend listeners", self.listeners))
+        import numpy as np
+        self.to_backend.put(("frontend listeners", np.random.uniform(size=(10,))))
+
     def _launch_front_end_loop(self, listener_program_closed):
         self.listeners["program closed"] = listener_program_closed
         self.run()
@@ -145,24 +150,26 @@ class Base_Back_End:
             cls._instance = super(Base_Back_End, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, multiprocessing_context):
+    def __init__(self, multiprocessing_context, to_frontend, from_frontend):
         # communications with the front-end process
-        self.to_frontend   = multiprocessing_context.Queue()
-        self.from_frontend = multiprocessing_context.Queue()
+        self.to_frontend   = to_frontend
+        self.from_frontend = from_frontend
 
         self.worker = multiprocessing_context.Process(
             target=self.run,
-            args=(fsdsf,),
+            args=(42,),
             name="ExampleWorker",
             daemon=False,
         )
         self.worker.start()
 
-    def run(self):
-        import time
-        while(1):
-            print("Worker process: Initialization complete.")
-            time.sleep(1.0)
+    def run(self, *args):
+        # need to notify the front end that the worker is ready
+        assert not self.from_frontend.empty(), "from_frontend queue is empty, but it shouldn't be."
+        msg, data = self.from_frontend.get()
+        print(f"Back_End received message from front end: {msg} with data: {data}")
+
+
 
     def join(self):
         self.worker.join()

@@ -15,11 +15,15 @@ class Front_End(Base_Front_End):
         return super().update()
 
 class Back_End(Base_Back_End):
-    def __init__(self, multiprocessing_context):
-        super().__init__(multiprocessing_context)
+    def __init__(self, multiprocessing_context, to_frontend, from_frontend):
+        super().__init__(multiprocessing_context, to_frontend, from_frontend)
 
-    def run(self):
+    def run(self, *args):
         super().run()
+        import time
+
+        time.sleep(1.0)
+        print("Worker process: Initialization complete.")
 
 
 def _back_end_process(front_end):
@@ -27,6 +31,14 @@ def _back_end_process(front_end):
     back_end.run()
 
     # Event(listener_to_notify=front_end.listeners["worker initialised"]).trigger()
+
+
+remove custom event 
+
+in queue:
+(key_for_listeners, args_for_lsiteners)
+---> we still trigger listeners just as events would, but without the event class
+
 
 
 if __name__ == "__main__":
@@ -39,6 +51,6 @@ if __name__ == "__main__":
     front_end = Front_End(multiprocessing_context = ctx)
 
     # Launch back-end worker process
-    back_end = Back_End(multiprocessing_context = ctx)
+    back_end  = Back_End(multiprocessing_context = ctx, to_frontend=front_end.from_backend, from_frontend=front_end.to_backend)
 
     back_end.join() 
