@@ -1,9 +1,68 @@
+import multiprocessing
+import queue
 import pygfx as gfx
 from rendercanvas.auto import RenderCanvas, loop
 from engine.elements.container import Container
 from engine.ENGINE_CONSTANTS import FPS_FAST, FPS_SLOW, FPS_VSLOW
 
+"""
+An Event: sends a notification to its listeners when triggered.
+"""
+class Event:
+
+    """
+    to_notify: list of Listeners to notify when the event is triggered
+    """
+    def __init__(self, listener_to_notify=None, identifier=None):
+        self.to_notify  = [] if listener_to_notify is None else [listener_to_notify]
+        self.identifier = identifier
+
+    def add_listener(self, listener):
+        self.to_notify.append(listener)
+    
+    # ex: event.trigger(arg1='thing', arg2=42)
+    def trigger(self, **kwargs):
+        for listener in self.to_notify:
+            listener.notify(self.identifier, **kwargs)
+
+"""
+A Listener: listens to Events and reacts when notified.
+"""
+class Listener:
+
+    def __init__(self, callback):
+        self.callback = callback
+
+    def notify(self, event_identifier, **kwargs):
+        self.callback(event_identifier, **kwargs)
+
+"""
+A value that is safe to access from multiple threads/processes.
+"""
+class Shared_Variable:
+    def __init__(self, ctx, initial_value=None, lock=None):
+        self._value = initial_value
+        self._lock  = lock if lock is not None else ctx.Lock()
+
+    @property
+    def value(self):
+        with self._lock:
+            return self._value
+
+    @value.setter
+    def value(self, new_value):
+        with self._lock:
+            self._value = new_value
+
+
 class Screen:
+
+    """ Singleton """
+    _instance = None
+    def __new__(cls, W_px, H_px, title="GUI Screen"):
+        if cls._instance is None:
+            cls._instance = super(Screen, cls).__new__(cls)
+        return cls._instance
 
     def __init__(self, W_px, H_px, title="GUI Screen"):
         self.W_px = W_px
@@ -26,27 +85,36 @@ class Screen:
         self.camera.local.position = (0, 0, 5)
 
 
-import time
 """
 This class is inherited by the main application
 This is where the engine interacts with the application
 """
-class Base_Application:
+class Base_Front_End:
     
-    """ Singleton pattern """
+    """ Singleton """
     _instance = None
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):  # accept incoming args/kwargs
         if cls._instance is None:
-            cls._instance = super(Base_Application, cls).__new__(cls)
+            cls._instance = super(Base_Front_End, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, width=800, height=600):
+    def __init__(self, multiprocessing_context, title, width, height):
+        self.ctx = multiprocessing_context
+        
+        # App internals
         self.fps = FPS_FAST
-        self.screen = Screen(width, height, title="GUI Application")
+        self.screen = Screen(width, height, title=title)
         self.existing_pages  = []
         self.active_page_idx = -1
 
-        self.tic = time.time()
+        # communications with the back-end process
+        self.from_backend = self.ctx.Queue()
+        self.to_backend   = self.ctx.Queue()
+        self.listeners    = {"worker initialised": Listener(self._launch_front_end_loop)}
+
+    def _launch_front_end_loop(self, listener_program_closed):
+        self.listeners["program closed"] = listener_program_closed
+        self.run()
 
     def update(self):
         print("Override this for screen updates.")
@@ -68,6 +136,37 @@ class Base_Application:
     def set_fps(self, fps):
         self.fps = fps
 
+class Base_Back_End:
+
+    """ Singleton """
+    _instance = None
+    def __new__(cls, *args, **kwargs):  # accept incoming args/kwargs
+        if cls._instance is None:
+            cls._instance = super(Base_Back_End, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self, multiprocessing_context):
+        # communications with the front-end process
+        self.to_frontend   = multiprocessing_context.Queue()
+        self.from_frontend = multiprocessing_context.Queue()
+
+        self.worker = multiprocessing_context.Process(
+            target=self.run,
+            args=(fsdsf,),
+            name="ExampleWorker",
+            daemon=False,
+        )
+        self.worker.start()
+
+    def run(self):
+        import time
+        while(1):
+            print("Worker process: Initialization complete.")
+            time.sleep(1.0)
+
+    def join(self):
+        self.worker.join()
+            
 """
 Contains views
 """
@@ -81,12 +180,19 @@ class Base_Page:
         return (self._screen.W_px, self._screen.H_px)
     
     @property
+    def W_px(self):
+        return self._screen.W_px
+
+    @property
+    def H_px(self):
+        return self._screen.H_px
+    
+    @property
     def view(self, view_name):
         return self._views.get(view_name, None)
 
     def add_view(self, view):
         self._views[view.name] = view
-
 
 
 """
