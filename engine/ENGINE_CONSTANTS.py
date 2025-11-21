@@ -1,0 +1,3 @@
+FPS_FAST  = 32
+FPS_SLOW  = 4
+FPS_VSLOW = 1
