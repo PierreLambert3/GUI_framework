@@ -4,37 +4,43 @@ import pygfx as gfx
 from rendercanvas.auto import RenderCanvas, loop
 from engine.elements.container import Container
 from engine.ENGINE_CONSTANTS import FPS_FAST, FPS_SLOW, FPS_VSLOW
+import time
 
-"""
-An Event: sends a notification to its listeners when triggered.
-"""
-class Event:
+# """
+# An Event: sends a notification to its listeners when triggered.
+# """
+# class Event:
 
-    """
-    to_notify: list of Listeners to notify when the event is triggered
-    """
-    def __init__(self, listener_to_notify=None, identifier=None):
-        self.to_notify  = [] if listener_to_notify is None else [listener_to_notify]
-        self.identifier = identifier
+#     """
+#     to_notify: list of Listeners to notify when the event is triggered
+#     """
+#     def __init__(self, listener_to_notify=None, identifier=None):
+#         self.to_notify  = [] if listener_to_notify is None else [listener_to_notify]
+#         self.identifier = identifier
 
-    def add_listener(self, listener):
-        self.to_notify.append(listener)
+#     def add_listener(self, listener):
+#         self.to_notify.append(listener)
     
-    # ex: event.trigger(arg1='thing', arg2=42)
-    def trigger(self, **kwargs):
-        for listener in self.to_notify:
-            listener.notify(self.identifier, **kwargs)
+#     # ex: event.trigger(arg1='thing', arg2=42)
+#     def trigger(self, **kwargs):
+#         for listener in self.to_notify:
+#             listener.notify(self.identifier, **kwargs)
 
 """
 A Listener: listens to Events and reacts when notified.
+for the front end and the back end, the Liteners are expected to be srored in a dictionnary, so that the key can be used by the event maker
 """
 class Listener:
 
     def __init__(self, callback):
         self.callback = callback
 
-    def notify(self, event_identifier, **kwargs):
-        self.callback(event_identifier, **kwargs)
+    def notify(self, *args):
+        self.callback(*args)
+
+    def __call__(self, *args):
+        self.callback(*args)
+
 
 """
 A value that is safe to access from multiple threads/processes.
@@ -110,26 +116,54 @@ class Base_Front_End:
         # communications with the back-end process
         self.from_backend = self.ctx.Queue()
         self.to_backend   = self.ctx.Queue()
-        self.listeners    = {"worker initialised": Listener(self._launch_front_end_loop)}
+        self.listeners    = {
+            "back-end initialised": Listener(self._launch_main_loop),
+            "exit program": Listener(self._exit_program),
+            "pagename request": Listener(self._send_pagename)
+            }
 
-        # give the listeners to the back-end process
-        # self.to_backend.put(("frontend listeners", self.listeners))
-        import numpy as np
-        self.to_backend.put(("frontend listeners", np.random.uniform(size=(10,))))
+        # alive signal for the backend
+        self.send("front-end alive")
 
-    def _launch_front_end_loop(self, listener_program_closed):
-        self.listeners["program closed"] = listener_program_closed
-        self.run()
+    def add_page(self, page):
+        self.existing_pages.append(page)
+    
+    def change_page(self, pagename):
+        found_idx = -1
+        for idx, page in enumerate(self.existing_pages):
+            if page.name == pagename:
+                found_idx = idx
+        if found_idx < 0:
+            self._exit_program("change page to a name that does not exist")
+        self.active_page_idx = found_idx
+    
+    @property
+    def pagename(self):
+        if len(self.existing_pages) < 1:
+            self._exit_program("current page querried but no pages exist")
+        return self.existing_pages[self.active_page_idx].name
+
+    def _exit_program(self, message="exiting program (no message)"):
+        print(message)
+        self.send("exit program")
+        print("TODO: graceful close, front-end")
+        1/0
 
     def update(self):
-        print("Override this for screen updates.")
+        # print("Override this for screen updates.")
+        pass
     
-    def _schedule_next_frame(self):
-        loop.call_later(1.0 / max(1e-6, self.fps), self.screen.canvas.request_draw, self.animate)
-
     """ Internal animation loop - called before each render. """
-    def animate(self):
+    def one_frame(self):
+        # 2. check & react to events
+        while not self.from_backend.empty():
+            msg, data = self.from_backend.get()
+            self.listeners[msg]()
+
+        # 2. update screen
         self.update()
+
+        # 3. render & schedule next render
         self.screen.render()
         self._schedule_next_frame()
 
@@ -138,8 +172,33 @@ class Base_Front_End:
         self._schedule_next_frame() # the first frame to kick things off
         loop.run()
 
+    def _schedule_next_frame(self):
+        loop.call_later(1.0 / max(1e-6, self.fps), self.screen.canvas.request_draw, self.one_frame)
+
+    def _launch_main_loop(self):
+        del self.listeners["back-end initialised"]
+        self.run()
+
+    def wait_for_backend_ready(self):
+        # 1. wait for back-end to be ready
+        while self.from_backend.empty():
+            time.sleep(0.1)
+        msg, data = self.from_backend.get()
+        assert self.from_backend.empty(), "back end sent multiple messages to front end when signaling init finished"
+        assert msg == "back-end initialised", "expecting message: 'back-end initialised', but received: "+str(msg)
+        # 2. Acknowledge receipt & indicate that front-end main loop is launching
+        self.send("front-end main loop launching")
+        # 3. Launch main loop
+        self.listeners[msg]()
+
     def set_fps(self, fps):
         self.fps = fps
+
+    def _send_pagename(self):
+        self.send("pagename received", [self.pagename])
+
+    def send(self, listener_key, parameters = []):
+        self.to_backend.put((listener_key, parameters))
 
 class Base_Back_End:
 
@@ -154,33 +213,49 @@ class Base_Back_End:
         # communications with the front-end process
         self.to_frontend   = to_frontend
         self.from_frontend = from_frontend
+        self.pagename_now  = "no page"
 
-        self.worker = multiprocessing_context.Process(
-            target=self.run,
-            args=(42,),
-            name="ExampleWorker",
-            daemon=False,
-        )
-        self.worker.start()
+        self.listeners    = {
+            "exit program": Listener(self._exit_program),
+            "pagename received": Listener(self._update_page_name)
+            }
 
-    def run(self, *args):
-        # need to notify the front end that the worker is ready
-        assert not self.from_frontend.empty(), "from_frontend queue is empty, but it shouldn't be."
-        msg, data = self.from_frontend.get()
-        print(f"Back_End received message from front end: {msg} with data: {data}")
-
-
+    def launch_process(self, *args):
+        # verify that front-end is alive
+        try:
+            assert not self.from_frontend.empty(), "from_frontend queue is empty, but it shouldn't be."
+            msg, data = self.from_frontend.get()
+            assert self.from_frontend.empty(), "front end posted multiple messages when only waiting for 'front-end alive'"
+            assert msg == "front-end alive", "front-end message is not the expected 'front-end alive' string"
+        except:
+            self.send("front end gave no sign of life: exiting program")
+            return False
+        return True
 
     def join(self):
         self.worker.join()
-            
+
+    def _exit_program(self, message="exiting program (no message)"):
+        self.send("exit program")
+        print(message)
+        print("TODO: graceful close, front-end")
+        1/0
+    
+    def _update_page_name(self, parameters):
+        print("received page name : ", parameters[0])
+        self.pagename_now = parameters[0]
+
+    def send(self, listener_key, parameters = []):
+        self.to_frontend.put((listener_key, parameters))
+        
 """
 Contains views
 """
 class Base_Page:
-    def __init__(self, screen):
+    def __init__(self, screen, name):
         self._screen = screen
-        self._views = {}
+        self.name    = name
+        self._views  = {}
     
     @property
     def size(self):
